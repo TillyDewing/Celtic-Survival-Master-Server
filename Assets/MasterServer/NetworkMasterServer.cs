@@ -43,13 +43,10 @@ public class NetworkMasterServer : MonoBehaviour
 	// map of gameTypeNames to rooms of that type
 	Dictionary<string, Rooms> gameTypeRooms = new Dictionary<string, Rooms>();
 
-    public void Start()
-    {
-        InitializeServer();
-    }
 
 	public void InitializeServer()
 	{
+        Debug.Log("Starting master server on port: " + MasterServerPort);
 		if (NetworkServer.active)
 		{
 			Debug.LogError("Already Initialized");
@@ -67,12 +64,14 @@ public class NetworkMasterServer : MonoBehaviour
 		NetworkServer.RegisterHandler(MasterMsgTypes.RegisterHostId, OnServerRegisterHost);
 		NetworkServer.RegisterHandler(MasterMsgTypes.UnregisterHostId, OnServerUnregisterHost);
 		NetworkServer.RegisterHandler(MasterMsgTypes.RequestListOfHostsId, OnServerListHosts);
-
+        NetworkServer.RegisterHandler(MasterMsgTypes.UpdateHostId, OnServerUpdateHost);
 		DontDestroyOnLoad(gameObject);
+        Debug.Log("Started");
 	}
 
 	public void ResetServer()
 	{
+        Debug.Log("Shutting Down Server");
 		NetworkServer.Shutdown();
 	}
 
@@ -122,15 +121,16 @@ public class NetworkMasterServer : MonoBehaviour
 
 	void OnServerError(NetworkMessage netMsg)
 	{
-		Debug.Log("ServerError from Master");
+		Debug.LogError("ServerError from Master");
 	}
 
 	// --------------- Application Handlers -----------------
 
 	void OnServerRegisterHost(NetworkMessage netMsg)
 	{
-		Debug.Log("OnServerRegisterHost");
+		//Debug.Log("OnServerRegisterHost");
 		var msg = netMsg.ReadMessage<MasterMsgTypes.RegisterHostMessage>();
+        Debug.Log("Registering new host: " + msg.gameName + " - " + msg.hostPort + " - " + msg.playerLimit);
 		var rooms = EnsureRoomsForGameType(msg.gameTypeName);
 
 		int result = (int)MasterMsgTypes.NetworkMasterServerEvent.RegistrationSucceeded;
@@ -156,7 +156,7 @@ public class NetworkMasterServer : MonoBehaviour
 		if (!rooms.rooms.ContainsKey(msg.gameName))
 		{
 			//error
-			Debug.Log("OnServerUnregisterHost game not found: " + msg.gameName);
+			Debug.LogWarning("OnServerUnregisterHost game not found: " + msg.gameName);
 			return;
 		}
 
@@ -164,7 +164,7 @@ public class NetworkMasterServer : MonoBehaviour
 		if (room.connectionId != netMsg.conn.connectionId)
 		{
 			//err
-			Debug.Log("OnServerUnregisterHost connection mismatch:" + room.connectionId);
+			Debug.LogWarning("OnServerUnregisterHost connection mismatch:" + room.connectionId);
 			return;
 		}
 		rooms.rooms.Remove(msg.gameName);
@@ -189,7 +189,7 @@ public class NetworkMasterServer : MonoBehaviour
         if (!rooms.rooms.ContainsKey(msg.gameName))
         {
             //error
-            Debug.Log("OnServerUpdateHost game not found: " + msg.gameName);
+            Debug.LogWarning("OnServerUpdateHost game not found: " + msg.gameName);
             return;
         }
 
@@ -197,15 +197,15 @@ public class NetworkMasterServer : MonoBehaviour
         if (room.connectionId != netMsg.conn.connectionId)
         {
             //err
-            Debug.Log("OnServerUpdateHost connection mismatch:" + room.connectionId);
+            Debug.LogWarning("OnServerUpdateHost connection mismatch:" + room.connectionId);
             return;
         }
 
         room.players = msg.players; //Update Player Count of Host
 
-        var response = new MasterMsgTypes.RegisteredHostMessage();
-        response.resultCode = (int)MasterMsgTypes.NetworkMasterServerEvent.UpdateSucceeded;
-        netMsg.conn.Send(MasterMsgTypes.UpdatedHostId, response);
+        //var response = new MasterMsgTypes.RegisteredHostMessage();
+        //response.resultCode = (int)MasterMsgTypes.NetworkMasterServerEvent.UpdateSucceeded;
+        //netMsg.conn.Send(MasterMsgTypes.UpdatedHostId, response);
     }
 
     void OnServerListHosts(NetworkMessage netMsg)

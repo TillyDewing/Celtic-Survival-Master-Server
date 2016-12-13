@@ -10,6 +10,8 @@ public class MasterServerConsole : MonoBehaviour
 
     string strInput;
 
+    public NetworkMasterServer server;
+
     void Awake()
     {
         DontDestroyOnLoad(gameObject);
@@ -21,12 +23,29 @@ public class MasterServerConsole : MonoBehaviour
 
         Application.logMessageReceived += HandleLog;
 
-        Debug.Log("Console Started");
+        Debug.Log("**************************************************");
+        Debug.Log("*        Celtic Survival Master Server 1.0       *");
+        Debug.Log("*        Copyright 2016 Idiosyncratic Games      *");
+        Debug.Log("**************************************************");
+
+        server.InitializeServer();
     }
 
     void OnInputText(string obj)
     {
-
+        obj = obj.ToLower();
+        //Debug.Log("On Input: " + obj);
+        
+        if(obj.Equals("stop"))
+        {
+            Debug.Log("Stopping");
+            server.ResetServer();
+        }
+        else if (obj.Equals("start"))
+        {
+            Debug.Log("Starting");
+            server.InitializeServer();
+        }
     }
 
     void HandleLog(string message, string stackTrace, LogType type)

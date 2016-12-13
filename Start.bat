@@ -1,0 +1,1 @@
+Start CelticSurvivalMasterServer.exe -batchmode

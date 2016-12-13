@@ -12,6 +12,8 @@ public class NetworkMasterClient : MonoBehaviour
 	public string gameName = "My Server";
 	public int gamePort = 25560;
 
+    public bool useGui = true;
+
 	[SerializeField]
 	public int yoffset = 0;
 
@@ -56,6 +58,7 @@ public class NetworkMasterClient : MonoBehaviour
 		client.RegisterHandler(MasterMsgTypes.RegisteredHostId, OnRegisteredHost);
 		client.RegisterHandler(MasterMsgTypes.UnregisteredHostId, OnUnregisteredHost);
 		client.RegisterHandler(MasterMsgTypes.ListOfHostsId, OnListOfHosts);
+        //client.RegisterHandler(MasterMsgTypes.UpdatedHostId, )
 
 		DontDestroyOnLoad(gameObject);
 	}
@@ -122,6 +125,7 @@ public class NetworkMasterClient : MonoBehaviour
 		OnServerEvent(MasterMsgTypes.NetworkMasterServerEvent.HostListReceived);
 	}
 
+
 	public void ClearHostList()
 	{
 		if (!isConnected)
@@ -163,6 +167,8 @@ public class NetworkMasterClient : MonoBehaviour
 
 		HostGameType = gameTypeName;
 		HostGameName = gameName;
+
+        StartCoroutine("HostUpdate");
 	}
 
 	public void RequestHostList(string gameTypeName)
@@ -193,7 +199,9 @@ public class NetworkMasterClient : MonoBehaviour
 		HostGameType = "";
 		HostGameName = "";
 
-		Debug.Log("send UnregisterHost");
+        StopCoroutine("HostUpdate");
+
+        Debug.Log("send UnregisterHost");
 	}
 
     //William Dewing 12/12/16
@@ -211,11 +219,8 @@ public class NetworkMasterClient : MonoBehaviour
         msg.gameName = HostGameName;
         msg.players = NetworkManager.singleton.numPlayers;
         client.Send(MasterMsgTypes.UpdateHostId, msg);
-        HostGameType = "";
-        HostGameName = "";
-        
 
-        Debug.Log("send UnregisterHost");
+        Debug.Log("send UpdateHost");
     }
 
 	public virtual void OnFailedToConnectToMasterServer()
@@ -264,72 +269,89 @@ public class NetworkMasterClient : MonoBehaviour
 		HostGameName = "";
     }
 
-	//void OnGUI()
-	//{
-	//	if (client != null && client.isConnected)
-	//	{
-	//		if (GUI.Button(new Rect(100, 20+yoffset, 200, 20), "MasterClient Disconnect"))
-	//		{
-				
-	//		}
-	//	}
-	//	else
-	//	{
-	//		if (GUI.Button(new Rect(100, 20+yoffset, 200, 20), "MasterClient Connect"))
-	//		{
-	//			InitializeClient();
-	//		}
-	//		return;
-	//	}
+    IEnumerator HostUpdate()
+    {
+        Debug.Log("Host autoupdate started");
+        while (isConnected)
+        {
+            UpdateHost();
+            
+            yield return new WaitForSeconds(updateRate);
+        }
+        Debug.Log("Host autoupdate stopped");
+    }
+
+    void OnGUI()
+    {
+        if (!useGui)
+        {
+            return;
+        }
+
+        if (client != null && client.isConnected)
+        {
+            if (GUI.Button(new Rect(100, 20 + yoffset, 200, 20), "MasterClient Disconnect"))
+            {
+
+            }
+        }
+        else
+        {
+            if (GUI.Button(new Rect(100, 20 + yoffset, 200, 20), "MasterClient Connect"))
+            {
+                InitializeClient();
+            }
+            return;
+        }
 
 
-	//	if (HostGameType == "")
-	//	{
-	//		GUI.Label(new Rect(100, 50 + yoffset, 80, 20), "GameType:");
-	//		gameTypeName = GUI.TextField(new Rect(180, 50 + yoffset, 200, 20), gameTypeName);
+        if (HostGameType == "")
+        {
+            GUI.Label(new Rect(100, 50 + yoffset, 80, 20), "GameType:");
+            gameTypeName = GUI.TextField(new Rect(180, 50 + yoffset, 200, 20), gameTypeName);
 
-	//		GUI.Label(new Rect(100, 70 + yoffset, 80, 20), "GameName:");
-	//		gameName = GUI.TextField(new Rect(180, 70 + yoffset, 200, 20), gameName);
+            GUI.Label(new Rect(100, 70 + yoffset, 80, 20), "GameName:");
+            gameName = GUI.TextField(new Rect(180, 70 + yoffset, 200, 20), gameName);
 
-	//		if (GUI.Button(new Rect(100, 90 + yoffset, 200, 20), "RegisterHost"))
-	//		{
-	//			int port = gamePort;
-	//			if (NetworkManager.singleton != null)
-	//			{
-	//				port = NetworkManager.singleton.networkPort;
-	//			}
-	//			RegisterHost(gameTypeName, gameName, "none", false,0 ,  8, port);
-	//		}
+            if (GUI.Button(new Rect(100, 90 + yoffset, 200, 20), "RegisterHost"))
+            {
+                int port = gamePort;
+                if (NetworkManager.singleton != null)
+                {
+                    port = NetworkManager.singleton.networkPort;
+                }
+                RegisterHost(gameTypeName, gameName, "none", false, 0, 8, port);
+            }
 
-	//		if (GUI.Button(new Rect(100, 120 + yoffset, 200, 20), "List Hosts"))
-	//		{
-	//			RequestHostList(gameTypeName);
-	//		}
-	//	}
-	//	else
-	//	{
-	//		if (GUI.Button(new Rect(100, 120 + yoffset, 120, 20), "UnregisterHost"))
-	//		{
-	//			UnregisterHost();
-	//		}
-	//	}
+            if (GUI.Button(new Rect(100, 120 + yoffset, 200, 20), "List Hosts"))
+            {
+                RequestHostList(gameTypeName);
+            }
+        }
+        else
+        {
+            if (GUI.Button(new Rect(100, 120 + yoffset, 120, 20), "UnregisterHost"))
+            {
+                UnregisterHost();
+            }
+        }
 
-	//	if (hosts != null)
-	//	{
-	//		int y = 140;
-	//		foreach (var h in hosts)
-	//		{
-	//			if (GUI.Button(new Rect(120, y + yoffset, 240, 20), "Host:" + h.name + "addr:" + h.hostIp + ":" + h.hostPort))
-	//			{
-	//				if (NetworkManager.singleton != null)
-	//				{
-	//					NetworkManager.singleton.networkAddress = h.hostIp;
-	//					NetworkManager.singleton.networkPort = h.hostPort;
-	//					NetworkManager.singleton.StartClient();
-	//				}
-	//			}
-	//			y += 22;
-	//		}
-	//	}
-	//}
+        if (hosts != null)
+        {
+            int y = 140;
+            foreach (var h in hosts)
+            {
+                if (GUI.Button(new Rect(120, y + yoffset, 240, 20), "Host:" + h.name + "addr:" + h.hostIp + ":" + h.hostPort))
+                {
+                    if (NetworkManager.singleton != null)
+                    {
+                        NetworkManager.singleton.networkAddress = h.hostIp;
+                        NetworkManager.singleton.networkPort = h.hostPort;
+                        NetworkManager.singleton.StartClient();
+                    }
+                }
+                y += 22;
+            }
+        }
+    }
 }
